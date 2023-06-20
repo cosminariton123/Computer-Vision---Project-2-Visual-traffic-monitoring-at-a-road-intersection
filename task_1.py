@@ -37,12 +37,11 @@ def get_median_background_image():
         
         for i, line in enumerate(r):
             for j, elem in enumerate(line):
-                g_median_bins[i, j, elem] += 1
+                r_median_bins[i, j, elem] += 1
 
         pbar.update(1)
 
     in_video.release()
-
 
     median_image = np.concatenate([np.argmax(b_median_bins, axis=2), np.argmax(g_median_bins, axis=2), np.argmax(r_median_bins, axis=2)], axis=2, dtype=np.uint8)
 
