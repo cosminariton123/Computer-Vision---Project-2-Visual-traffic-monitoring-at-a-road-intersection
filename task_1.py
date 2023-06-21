@@ -1,87 +1,45 @@
 import cv2
 import numpy as np
-import os
-from tqdm import tqdm
+import json
+
+from background_extraction import get_differences_mask, extract_foreground_from_image
 
 
-def get_median_background_image():
+def process_one_image(image, background, query, visualize=False):
+
+    THRESHOLD_BG_EXTRACT = 70
+    THRESHOLD_OBJECT_PRESENCE = 25
+
+    foreground_mask = get_differences_mask(image, background, threshold=THRESHOLD_BG_EXTRACT)
+    foreground_mask = np.array(foreground_mask * 255, dtype=np.uint8)
     
-    video_path = os.path.join("train", "context_videos_all_tasks", "01.mp4")
 
-    in_video = cv2.VideoCapture(video_path)
+    with open("manual_roi.json", "r") as f:
+        rects = json.load(f)
 
-    r_median_bins = np.zeros(shape=(880, 1920, 256))
-    g_median_bins = np.zeros(shape=(880, 1920, 256))
-    b_median_bins = np.zeros(shape=(880, 1920, 256))
+    for lane in query:
+        rect = rects[lane - 1]
 
-    frames = int(in_video.get(cv2.CAP_PROP_FRAME_COUNT))
-    pbar = tqdm(desc="Processing median image", total=100)
+        if np.mean(foreground_mask[rect[1]:rect[1]+rect[3], rect[0]:rect[0]+rect[2]]) > THRESHOLD_OBJECT_PRESENCE:
+            query[lane] = 1
+        else:
+            query[lane] = 0
 
-    for _ in range(frames) :
-        ret, frame = in_video.read()
+    if visualize:
+        cv2.imshow("image", image)
+        cv2.imshow("background", background)
 
-        if not ret:
-            break
+        for lane in query:
+            rect = rects[lane - 1]
 
-        b = frame[:, :, 0]
-        g = frame[:, :, 1]
-        r = frame[:, :, 2]
+            if query[lane] == 0:
+                foreground_mask = cv2.rectangle(foreground_mask, (rect[0], rect[1]), (rect[0] + rect[2], rect[1] + rect[3]), (0, 0, 255), 3)
+            else:
+                foreground_mask = cv2.rectangle(foreground_mask, (rect[0], rect[1]), (rect[0] + rect[2], rect[1] + rect[3]), (0, 255, 0), 3)
 
-        for i, line in enumerate(b):
-            for j, elem in enumerate(line):
-                b_median_bins[i, j, elem] += 1
-
-        for i, line in enumerate(g):
-            for j, elem in enumerate(line):
-                g_median_bins[i, j, elem] += 1
-        
-        for i, line in enumerate(r):
-            for j, elem in enumerate(line):
-                r_median_bins[i, j, elem] += 1
-
-        pbar.update(1)
-
-    in_video.release()
-
-    median_image = np.concatenate([np.argmax(b_median_bins, axis=2), np.argmax(g_median_bins, axis=2), np.argmax(r_median_bins, axis=2)], axis=2, dtype=np.uint8)
-
-    cv2.imshow("median_image", median_image)
-    cv2.waitKey()
-    cv2.destroyAllWindows()
-
-get_median_background_image()
+        cv2.imshow("foreground_mask", foreground_mask)
+        cv2.waitKey()
+        cv2.destroyAllWindows()
 
 
-
-def get_mean_background_image():
-    video_path = os.path.join("train", "context_videos_all_tasks", "02.mp4")
-
-    in_video = cv2.VideoCapture(video_path)
-
-    mean_image = np.zeros(shape=(880, 1920, 3))
-
-    frames = int(in_video.get(cv2.CAP_PROP_FRAME_COUNT))
-    pbar = tqdm(desc="Processing mean image", total=frames)
-
-    for _ in range(frames) :#True:
-        ret, frame = in_video.read()
-
-        if not ret:
-            break
-
-        mean_image += frame
-
-        pbar.update(1)
-
-    in_video.release()
-
-
-    cv2.imshow("b", np.array(mean_image / frames, dtype=np.uint8))
-    cv2.waitKey()
-    cv2.destroyAllWindows()
-
-
-
-def process_one_image(image):
-    pass
-
+    return query

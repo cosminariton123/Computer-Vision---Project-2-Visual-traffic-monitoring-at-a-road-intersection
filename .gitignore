@@ -2,3 +2,7 @@ venv
 evaluation
 test
 train
+__pycache__
+test.py
+parameter_tuning
+Ariton_Cosmin_506
