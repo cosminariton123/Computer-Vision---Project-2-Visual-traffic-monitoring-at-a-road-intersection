@@ -62,14 +62,9 @@ def solve_task_1(root_dir, context_videos_dir, output_dir, visualize=False):
         
 
 
-def solve_task_2(root_dir, context_videos_dir, output_dir, visualize=False):
+def solve_task_2(root_dir, output_dir, visualize=False):
     output_dir = os.path.join(output_dir, "Task2")
     TASK_DIR = os.path.join(root_dir, "Task2")
-    
-    videos_paths = [os.path.join(context_videos_dir, filepath) for filepath in os.listdir(context_videos_dir)]
-
-    with Pool(len(videos_paths)) as p:
-        backgrounds = p.map(get_mean_background_image, videos_paths)
 
     queries_paths = [os.path.join(TASK_DIR, filepath) for filepath in os.listdir(TASK_DIR) if ".txt" in filepath]
 
@@ -87,7 +82,7 @@ def solve_task_2(root_dir, context_videos_dir, output_dir, visualize=False):
     videos_paths = [os.path.join(TASK_DIR, filepath) for filepath in os.listdir(TASK_DIR) if ".mp4" in filepath]
     workers = len(videos_paths) if not visualize else 1
     with Pool(workers) as p:
-        results = p.starmap(process_one_video, zip(videos_paths, backgrounds, queries, [visualize for _ in videos_paths]))
+        results = p.starmap(process_one_video, zip(videos_paths, queries, [visualize for _ in videos_paths]))
 
 
     if not os.path.exists(output_dir):
@@ -100,9 +95,9 @@ def solve_task_2(root_dir, context_videos_dir, output_dir, visualize=False):
             output_string = f"{result[frames_key]} -1 -1 -1 -1\n"
 
             for idx, elem in enumerate(result[rectangles_key]):
-                output_string += f"{idx} " + " ".join(elem) + "\n"
+                output_string += f"{idx} " + " ".join([str(a) for a in elem]) + "\n"
 
-            output_dir = output_dir[:-1]
+            output_string = output_string[:-1]
             f.write(output_string)
 
 def solve_task_3():
@@ -118,9 +113,9 @@ def main():
     if not os.path.exists(OUTPUT_DIR):
         os.mkdir(OUTPUT_DIR)
     
-    #solve_task_1(ROOT_DIR, CONTEXT_VIDEOS_DIR, OUTPUT_DIR, True)
+    #solve_task_1(ROOT_DIR, CONTEXT_VIDEOS_DIR, OUTPUT_DIR, False)
 
-    solve_task_2(ROOT_DIR, CONTEXT_VIDEOS_DIR, OUTPUT_DIR, False)
+    solve_task_2(ROOT_DIR, OUTPUT_DIR, True)
 
 if __name__ == "__main__":
     main()
