@@ -29,8 +29,10 @@ def process_one_image(image, background, query, visualize=False):
         cv2.imshow("image", image)
         cv2.imshow("background", background)
 
-        for lane in query:
+        for idx, lane in enumerate(query):
             rect = rects[lane - 1]
+
+            cv2.imshow(f"foreground_patch_{idx}", foreground_mask[rect[1]:rect[1]+rect[3], rect[0]:rect[0]+rect[2]])
 
             if query[lane] == 0:
                 foreground_mask = cv2.rectangle(foreground_mask, (rect[0], rect[1]), (rect[0] + rect[2], rect[1] + rect[3]), (0, 0, 255), 3)
