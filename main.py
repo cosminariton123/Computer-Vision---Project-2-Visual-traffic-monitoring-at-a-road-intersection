@@ -110,7 +110,7 @@ def solve_task_3():
 
 def main():
     OUTPUT_DIR = "Ariton_Cosmin_506"
-    ROOT_DIR = "train"
+    ROOT_DIR = "test"
     CONTEXT_VIDEOS_DIR = os.path.join(ROOT_DIR, "context_videos_all_tasks")
 
     if not os.path.exists(OUTPUT_DIR):
