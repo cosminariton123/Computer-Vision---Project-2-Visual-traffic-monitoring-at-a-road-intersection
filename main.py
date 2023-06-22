@@ -6,6 +6,7 @@ from task_1 import process_one_image
 from task_2 import process_one_video
 from background_extraction import get_mean_background_image
 from consts import frames_key, rectangles_key
+import shutil
 
 
 def solve_task_1(root_dir, context_videos_dir, output_dir, visualize=False):
@@ -63,6 +64,9 @@ def solve_task_1(root_dir, context_videos_dir, output_dir, visualize=False):
 
 
 def solve_task_2(root_dir, output_dir, visualize=False):
+    if os.path.exists("parameter_tuning"):
+            shutil.rmtree("parameter_tuning")
+
     output_dir = os.path.join(output_dir, "Task2")
     TASK_DIR = os.path.join(root_dir, "Task2")
 
@@ -80,8 +84,7 @@ def solve_task_2(root_dir, output_dir, visualize=False):
             queries.append(file)
 
     videos_paths = [os.path.join(TASK_DIR, filepath) for filepath in os.listdir(TASK_DIR) if ".mp4" in filepath]
-    workers = len(videos_paths) if not visualize else 1
-    with Pool(workers) as p:
+    with Pool(len(videos_paths)) as p:
         results = p.starmap(process_one_video, zip(videos_paths, queries, [visualize for _ in videos_paths]))
 
 

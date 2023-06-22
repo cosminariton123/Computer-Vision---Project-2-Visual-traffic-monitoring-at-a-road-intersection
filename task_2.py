@@ -2,7 +2,8 @@ import cv2
 import numpy as np
 from tqdm import tqdm
 import matplotlib.pyplot as plt
-
+import uuid
+import os
 
 from consts import frames_key, rectangles_key
 from grab_cut import grab_cut_from_image
@@ -39,7 +40,7 @@ def search_best_match(frame, histogram, last_rect, search_space):
 
 
 
-def get_histogram(frame, mask, visualize=False):
+def get_histogram(frame, mask):
     if mask is not None:
         mask = np.reshape(mask, newshape=frame.shape[:2])
 
@@ -49,26 +50,28 @@ def get_histogram(frame, mask, visualize=False):
         hist = cv2.calcHist([frame], [channel], mask, [256], [0, 256])
         hists.append(hist)
 
-
-    if visualize:
-        color = ["blue", "green", "red"]
-        for idx, hist in enumerate(hists):
-            plt.subplot(4, 1, idx + 1)
-            plt.plot(hist, color=color[idx])
-            plt.title(f"Hist {color[idx]}")
-
-        for idx, hist in enumerate(hists):
-            plt.subplot(4, 1, 4)
-            plt.plot(hist, color=color[idx])
-            plt.title(f"Hists combined")
-        plt.show()
-
     return hists
 
 
 def process_one_video(video_path, query, visualise=False):
-    
+
+
     in_video = cv2.VideoCapture(video_path)
+
+    if visualise:
+        id = str(uuid.uuid1())
+
+        if not os.path.exists("parameter_tuning"):
+            os.mkdir("parameter_tuning")
+
+        visualise_dir = os.path.join("parameter_tuning", id)
+
+        os.mkdir(visualise_dir)
+
+        fps = int(in_video.get(cv2.CAP_PROP_FPS))
+        width = int(in_video.get(cv2.CAP_PROP_FRAME_WIDTH))
+        height = int(in_video.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        viz_video = cv2.VideoWriter(os.path.join(visualise_dir, "video.mp4"), cv2.VideoWriter_fourcc(*"mp4v"), fps, (width, height))
 
     frames = query[frames_key]
 
@@ -84,14 +87,29 @@ def process_one_video(video_path, query, visualise=False):
             foreground, mask = grab_cut_from_image(frame, rect_to_roirect(query[rectangles_key][0]))
 
             if visualise:
-                mask_viz = np.array(mask.copy(), dtype=np.float32)
-                cv2.imshow("foreground", foreground)
-                cv2.imshow("mask", mask)
-                cv2.waitKey()
-                cv2.destroyAllWindows()
+                mask_viz = mask.copy()
+                mask_viz = mask_viz * 255
 
-            histogram = get_histogram(foreground, mask, visualise)
+                cv2.imwrite(os.path.join(visualise_dir, "foreground.jpg"), foreground)
+                cv2.imwrite(os.path.join(visualise_dir, "mask.jpg"), mask_viz)
+
+            histogram = get_histogram(foreground, mask)
             last_rect = query[rectangles_key][0]
+
+            if visualise:
+                
+
+                color = ["blue", "green", "red"]
+                for idx, hist in enumerate(histogram):
+                    plt.subplot(4, 1, idx + 1)
+                    plt.plot(hist, color=color[idx])
+                    plt.title(f"Hist {color[idx]}")
+
+                for idx, hist in enumerate(histogram):
+                    plt.subplot(4, 1, 4)
+                    plt.plot(hist, color=color[idx])
+                    plt.title(f"Hists combined")
+                plt.savefig(os.path.join(visualise_dir, "hist.jpg"))
 
         else:
             last_rect = search_best_match(frame, histogram, last_rect, 10)
@@ -100,9 +118,11 @@ def process_one_video(video_path, query, visualise=False):
             if visualise:
                 frame = cv2.rectangle(frame, last_rect[0:2], last_rect[2:4], (255, 0, 255), 3)
                 
-                cv2.imshow("Detection", frame)
-                cv2.waitKey()
-                cv2.destroyAllWindows()
+                viz_video.write(frame)
+
+
+    if visualise:
+        viz_video.release()
 
     in_video.release()
 
