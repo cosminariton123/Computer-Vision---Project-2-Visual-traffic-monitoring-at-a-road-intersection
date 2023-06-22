@@ -9,6 +9,16 @@ from consts import frames_key, rectangles_key
 from grab_cut import grab_cut_from_image
 from util import roirect_to_rect, rect_to_roirect
 
+def get_gradient_loss(gradient, last_gradients, search_space):
+    gradient = np.array(gradient)
+    last_gradients = np.mean(np.array(last_gradients), axis=0)
+
+    return np.mean(np.abs(gradient - last_gradients)) / (search_space * 2)
+
+
+def compute_gradient(l_x, l_y, x, y):
+    return l_x - x, l_y - y
+
 
 def get_hist_loss(hists_1, hists_2):
     
@@ -21,21 +31,70 @@ def get_hist_loss(hists_1, hists_2):
 
 
 
-def search_best_match(frame, histogram, last_rect, search_space):
+def search_best_match(frame, histogram, last_rect, search_space, last_gradients):
     
     l_x, l_y, l_width, l_height  = rect_to_roirect(last_rect)
 
     matches = list()
 
+    at_most_last_gradients = 8
+
     for x in range(l_x - search_space, l_x + search_space):
         for y in range(l_y - search_space, l_y + search_space):
             
-            loss = get_hist_loss(get_histogram(frame[y:y+l_height, x:x+l_width], None), histogram)
+            histogram_loss = get_hist_loss(get_histogram(frame[y:y+int(l_height), x:x+int(l_width)], None), histogram)
+            
+            aux_grad = last_gradients[at_most_last_gradients:] if len(last_gradients) > at_most_last_gradients else last_gradients
+
+            gradient_loss = get_gradient_loss(compute_gradient(l_x, l_y, x, y), aux_grad, search_space)
+            
+            gradient_loss = gradient_loss / 50
+
+            loss = gradient_loss + histogram_loss
+
             matches.append([[x, y], loss])
 
     matches.sort(key=lambda x: x[1])
 
-    return roirect_to_rect(matches[0][0] + [l_width, l_height])
+    if matches[0][0][0] < l_x and matches[0][0][1] < l_y:
+        l_width -= 0.4
+        l_height -= 0.4
+
+        if l_height < 60:
+            l_height = 60
+
+        if l_width < 60:
+            l_width = 60
+
+        if l_width / l_height > 2.5:
+            l_width = l_height
+    
+    if matches[0][0][0] > l_x and matches[0][0][1] > l_y:
+        l_width += 0.4
+        l_height += 0.4
+
+        if l_width / l_height > 2.5:
+            l_width = l_height
+        
+
+    min_nr_last_gradients = 4
+    min_frames = 100
+    if len(last_gradients) > min_frames:
+        last_gradients_mean = np.mean(np.array(last_gradients[min_nr_last_gradients:]), axis=0)
+
+        if last_gradients_mean[0] <= 0 and matches[0][0][0] + l_width >= frame.shape[1]:
+            return None, None
+        
+        if last_gradients_mean[0] >= 0 and matches[0][0][0] <= 0:
+            return None, None
+
+        if last_gradients_mean[1] <= 0 and matches[0][0][1] + l_height >= frame.shape[0]:
+            return None, None
+
+        if last_gradients_mean[1] >= 0 and matches[0][0][1] <= 0:
+            return None, None
+
+    return roirect_to_rect(matches[0][0] + [l_width, l_height]), compute_gradient(l_x, l_y, matches[0][0][0], matches[0][0][1])
 
 
 
@@ -95,6 +154,7 @@ def process_one_video(video_path, query, visualise=False):
 
             histogram = get_histogram(foreground, mask)
             last_rect = query[rectangles_key][0]
+            last_gradients = [(0, 0)]
 
             if visualise:
                 
@@ -112,11 +172,17 @@ def process_one_video(video_path, query, visualise=False):
                 plt.savefig(os.path.join(visualise_dir, "hist.jpg"))
 
         else:
-            last_rect = search_best_match(frame, histogram, last_rect, 10)
-            query[rectangles_key].append(last_rect)
+            if last_rect is not None:
+                last_rect, last_gradient = search_best_match(frame, histogram, last_rect, 20, last_gradients)
+                last_gradients.append(last_gradient)
+
+                if last_rect is not None:
+                    curr_rect = [int(elem) for elem in last_rect]
+                    query[rectangles_key].append(curr_rect)
 
             if visualise:
-                frame = cv2.rectangle(frame, last_rect[0:2], last_rect[2:4], (255, 0, 255), 3)
+                if last_rect is not None:
+                    frame = cv2.rectangle(frame, curr_rect[0:2], curr_rect[2:4], (255, 0, 255), 3)
                 
                 viz_video.write(frame)
 

@@ -116,9 +116,12 @@ def main():
     if not os.path.exists(OUTPUT_DIR):
         os.mkdir(OUTPUT_DIR)
     
-    #solve_task_1(ROOT_DIR, CONTEXT_VIDEOS_DIR, OUTPUT_DIR, False)
 
-    solve_task_2(ROOT_DIR, OUTPUT_DIR, True)
+    print("############## SOLVING TASK1 ##############")
+    solve_task_1(ROOT_DIR, CONTEXT_VIDEOS_DIR, OUTPUT_DIR, False)
+
+    print("############# SOLVING TASK2 ##################")
+    solve_task_2(ROOT_DIR, OUTPUT_DIR, False)
 
 if __name__ == "__main__":
     main()
