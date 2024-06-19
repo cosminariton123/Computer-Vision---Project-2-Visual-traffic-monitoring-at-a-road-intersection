@@ -1,3 +1,8 @@
+[Link to pdf with results](Ariton_Cosmin_506.pdf)
+![First pdf page as image](Ariton_Cosmin_506_pages-to-jpg-0001.jpg)
+![Second pdf page as image](Ariton_Cosmin_506_pages-to-jpg-0002.jpg)
+![Third pdf page as image](Ariton_Cosmin_506_pages-to-jpg-0003.jpg)
+
 1. the libraries required to run the project including the full version of each library
 
 python 3.10.10 was used
